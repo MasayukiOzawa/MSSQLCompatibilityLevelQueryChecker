@@ -25,8 +25,8 @@ env:
 
 jobs:
   release:
-    name: Build and publish NuGet tool package
-    runs-on: ubuntu-latest
+    name: Build and publish Windows executables
+    runs-on: windows-latest
     defaults:
       run:
         shell: pwsh
@@ -84,30 +84,53 @@ jobs:
           --configuration Release
           --no-build
 
-      - name: Pack .NET tool
-        run: >
-          dotnet pack "$env:PROJECT_PATH"
-          --configuration Release
-          --no-build
-          --no-restore
-          --output artifacts/package
-          -p:Version=${{ steps.release.outputs.package_version }}
-          -p:PackageVersion=${{ steps.release.outputs.package_version }}
-
-      - name: Verify release package
+      - name: Publish Windows executables
         shell: pwsh
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.package_version }}
         run: |
           $ErrorActionPreference = "Stop"
-          $expectedPackage = Join-Path "artifacts/package" "MSSQLCompatibilityLevelQueryChecker.Tool.${{ steps.release.outputs.package_version }}.nupkg"
-          if (-not (Test-Path -LiteralPath $expectedPackage -PathType Leaf)) {
-            throw "Expected release package was not created: $expectedPackage"
+          $runtimes = @("win-x64", "win-arm64")
+          $artifactDirectory = Join-Path $env:GITHUB_WORKSPACE "artifacts/release"
+          New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
+
+          foreach ($runtime in $runtimes) {
+            $publishDirectory = Join-Path $env:GITHUB_WORKSPACE "publish/$runtime"
+            $publishArguments = @(
+              "publish",
+              $env:PROJECT_PATH,
+              "--configuration", "Release",
+              "--runtime", $runtime,
+              "--self-contained", "true",
+              "--no-restore",
+              "--output", $publishDirectory,
+              "-p:PublishSingleFile=true",
+              "-p:IncludeNativeLibrariesForSelfExtract=true",
+              "-p:DebugType=None",
+              "-p:DebugSymbols=false",
+              "-p:Version=$env:RELEASE_VERSION"
+            )
+            dotnet @publishArguments
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "dotnet publish failed for $runtime."
+            }
+
+            $sourceExecutable = Join-Path $publishDirectory "mssql-compat-check.exe"
+            if (-not (Test-Path -LiteralPath $sourceExecutable -PathType Leaf)) {
+              throw "Expected executable was not created: $sourceExecutable"
+            }
+
+            $assetName = "mssql-compat-check-$env:RELEASE_TAG-$runtime.exe"
+            Copy-Item -LiteralPath $sourceExecutable -Destination (Join-Path $artifactDirectory $assetName)
           }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
         with:
-          name: mssql-compat-check-${{ steps.release.outputs.package_version }}
-          path: artifacts/package/*.nupkg
+          name: mssql-compat-check-${{ steps.release.outputs.package_version }}-windows
+          path: artifacts/release/*.exe
           if-no-files-found: error
 
       - name: Create or update GitHub Release
@@ -117,12 +140,12 @@ jobs:
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
         run: |
           $ErrorActionPreference = "Stop"
-          $assetPaths = @(Get-ChildItem -Path "artifacts/package" -Filter "*.nupkg" |
+          $assetPaths = @(Get-ChildItem -Path "artifacts/release" -Filter "*.exe" |
             Sort-Object Name |
             ForEach-Object { $_.FullName })
 
-          if ($assetPaths.Count -eq 0) {
-            throw "No NuGet package was created."
+          if ($assetPaths.Count -ne 2) {
+            throw "Expected two Windows executables, but found $($assetPaths.Count)."
           }
 
           $releaseExists = $false

@@ -33,6 +33,12 @@ SQL Server のデータベース互換性レベルを上げる前に、T-SQL の
 
 ## インストール
 
+GitHub Releases では、.NET Runtime を別途インストールせず実行できる自己完結型の
+Windows 実行ファイルを配布します。使用する環境に合わせて次のファイルをダウンロードしてください。
+
+- `mssql-compat-check-v<version>-win-x64.exe`
+- `mssql-compat-check-v<version>-win-arm64.exe`
+
 NuGet で公開されたパッケージは次のコマンドでグローバルツールとしてインストールできます。
 
 ```console
@@ -58,9 +64,11 @@ dotnet tool uninstall --global MSSQLCompatibilityLevelQueryChecker.Tool
 ## タグによる自動リリース
 
 `v1.2.3` のようなセマンティックバージョンのタグを push すると、GitHub Actions が
-復元、フォーマット検査、Release ビルド、テスト、`dotnet pack` を実行します。
-すべて成功すると、タグと同名の GitHub Release を作成し、バージョンを反映した
-`MSSQLCompatibilityLevelQueryChecker.Tool.<version>.nupkg` を添付します。
+復元、フォーマット検査、Release ビルド、テスト、自己完結型single-fileのpublishを実行します。
+すべて成功すると、タグと同名の GitHub Release を作成し、次の実行ファイルを添付します。
+
+- `mssql-compat-check-v<version>-win-x64.exe`
+- `mssql-compat-check-v<version>-win-arm64.exe`
 
 ```console
 git tag v1.0.0
@@ -69,7 +77,7 @@ git push origin v1.0.0
 
 プレリリースタグは `v1.0.0-preview.1` の形式を使用できます。既存タグの処理を再実行する場合は、
 GitHub Actions の `Release` ワークフローを手動実行し、`tag_name` に対象タグを指定します。
-このワークフローは GitHub Release へのパッケージ添付までを行い、NuGet.org への publish は行いません。
+このワークフローは GitHub Release への実行ファイル添付までを行い、NuGet.org への publish は行いません。
 
 ## オプションの短縮名
 
