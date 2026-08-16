@@ -55,6 +55,22 @@ dotnet tool install --global --add-source ./artifacts MSSQLCompatibilityLevelQue
 dotnet tool uninstall --global MSSQLCompatibilityLevelQueryChecker.Tool
 ```
 
+## タグによる自動リリース
+
+`v1.2.3` のようなセマンティックバージョンのタグを push すると、GitHub Actions が
+復元、フォーマット検査、Release ビルド、テスト、`dotnet pack` を実行します。
+すべて成功すると、タグと同名の GitHub Release を作成し、バージョンを反映した
+`MSSQLCompatibilityLevelQueryChecker.Tool.<version>.nupkg` を添付します。
+
+```console
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+プレリリースタグは `v1.0.0-preview.1` の形式を使用できます。既存タグの処理を再実行する場合は、
+GitHub Actions の `Release` ワークフローを手動実行し、`tag_name` に対象タグを指定します。
+このワークフローは GitHub Release へのパッケージ添付までを行い、NuGet.org への publish は行いません。
+
 ## オプションの短縮名
 
 すべての公開オプションには、1文字の短縮名があります。短縮名の大文字と小文字は区別されます。

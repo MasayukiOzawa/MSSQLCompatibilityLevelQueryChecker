@@ -1,0 +1,142 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Existing tag to build and publish as a GitHub Release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name == 'workflow_dispatch' && inputs.tag_name || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: 10.0.x
+  PROJECT_PATH: src/MssqlCompatCheck/MssqlCompatCheck.csproj
+  SOLUTION_PATH: MSSQLCompatibilityLevelQueryChecker.slnx
+
+jobs:
+  release:
+    name: Build and publish NuGet tool package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Resolve release metadata
+        id: release
+        shell: pwsh
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG_NAME: ${{ inputs.tag_name }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $releaseTag = $env:REF_NAME
+          if ($env:EVENT_NAME -eq "workflow_dispatch") {
+            $releaseTag = $env:INPUT_TAG_NAME
+          }
+
+          if ($releaseTag -notmatch '^v(?<version>[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$') {
+            throw "Release tag must use a semantic version such as v1.2.3 or v1.2.3-preview.1."
+          }
+
+          $packageVersion = $Matches.version
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "release_tag=$releaseTag" -Encoding utf8
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "package_version=$packageVersion" -Encoding utf8
+
+      - name: Checkout tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.release.outputs.release_tag }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore "$env:SOLUTION_PATH" --locked-mode --configfile NuGet.Config
+
+      - name: Verify formatting
+        run: dotnet format "$env:SOLUTION_PATH" --verify-no-changes --no-restore
+
+      - name: Build
+        run: >
+          dotnet build "$env:SOLUTION_PATH"
+          --configuration Release
+          --no-restore
+          -p:Version=${{ steps.release.outputs.package_version }}
+
+      - name: Test
+        run: >
+          dotnet test
+          --solution "$env:SOLUTION_PATH"
+          --configuration Release
+          --no-build
+
+      - name: Pack .NET tool
+        run: >
+          dotnet pack "$env:PROJECT_PATH"
+          --configuration Release
+          --no-build
+          --no-restore
+          --output artifacts/package
+          -p:Version=${{ steps.release.outputs.package_version }}
+          -p:PackageVersion=${{ steps.release.outputs.package_version }}
+
+      - name: Verify release package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $expectedPackage = Join-Path "artifacts/package" "MSSQLCompatibilityLevelQueryChecker.Tool.${{ steps.release.outputs.package_version }}.nupkg"
+          if (-not (Test-Path -LiteralPath $expectedPackage -PathType Leaf)) {
+            throw "Expected release package was not created: $expectedPackage"
+          }
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: mssql-compat-check-${{ steps.release.outputs.package_version }}
+          path: artifacts/package/*.nupkg
+          if-no-files-found: error
+
+      - name: Create or update GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $assetPaths = @(Get-ChildItem -Path "artifacts/package" -Filter "*.nupkg" |
+            Sort-Object Name |
+            ForEach-Object { $_.FullName })
+
+          if ($assetPaths.Count -eq 0) {
+            throw "No NuGet package was created."
+          }
+
+          $releaseExists = $false
+          try {
+            gh release view $env:RELEASE_TAG *> $null
+            $releaseExists = $LASTEXITCODE -eq 0
+          }
+          catch {
+            $releaseExists = $false
+          }
+
+          if ($releaseExists) {
+            gh release upload $env:RELEASE_TAG @assetPaths --clobber
+          }
+          else {
+            gh release create $env:RELEASE_TAG @assetPaths --title $env:RELEASE_TAG --generate-notes --verify-tag
+          }
