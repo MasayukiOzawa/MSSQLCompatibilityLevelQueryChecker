@@ -39,6 +39,7 @@ public enum DatabaseModuleKind
     SqlScalarFunction,
     SqlInlineTableValuedFunction,
     SqlTrigger,
+    SqlView,
 }
 
 /// <summary>A T-SQL module returned by a database collector.</summary>

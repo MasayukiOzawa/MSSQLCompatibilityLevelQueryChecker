@@ -48,7 +48,7 @@ public static class CliApplication
         };
         var includeModulesOption = new Option<bool>("--include-modules", "-M")
         {
-            Description = "P / FN / IF / TR の SQL モジュールをエクスポートします。",
+            Description = "P / FN / IF / TR / V の SQL モジュールをエクスポートします。",
         };
         var includeQueryCacheOption = new Option<bool>("--include-query-cache", "-Q")
         {

@@ -329,6 +329,7 @@ public sealed class ExportServiceTests
             new DatabaseModule(2, "dbo", "ScalarFunction", DatabaseModuleKind.SqlScalarFunction, "RETURN 1;", true),
             new DatabaseModule(3, "dbo", "InlineFunction", DatabaseModuleKind.SqlInlineTableValuedFunction, "RETURN SELECT 1 AS value;", true),
             new DatabaseModule(4, "dbo", "Trigger", DatabaseModuleKind.SqlTrigger, "SELECT 1;", false),
+            new DatabaseModule(5, "dbo", "OrderView", DatabaseModuleKind.SqlView, "CREATE VIEW dbo.OrderView AS SELECT 1 AS value;", true),
         };
         var service = new ExportService(new FakeDatabaseExportCollector(CreateSnapshot(modules: modules)));
 
@@ -336,9 +337,9 @@ public sealed class ExportServiceTests
             CreateOptions(temporaryDirectory.Path, includeModules: true, includeQueryCache: false),
             TestContext.Current.CancellationToken);
 
-        Assert.Equal(4, result.ModulesExported);
+        Assert.Equal(5, result.ModulesExported);
         var moduleDirectory = Path.Combine(temporaryDirectory.Path, "modules");
-        foreach (var objectType in new[] { "P", "FN", "IF", "TR" })
+        foreach (var objectType in new[] { "P", "FN", "IF", "TR", "V" })
         {
             var typeDirectory = Path.Combine(moduleDirectory, objectType);
             Assert.True(Directory.Exists(typeDirectory));
@@ -350,7 +351,7 @@ public sealed class ExportServiceTests
             Path.Combine(moduleDirectory, "manifest.json"),
             TestContext.Current.CancellationToken));
         Assert.Equal(
-            ["FN", "IF", "P", "TR"],
+            ["FN", "IF", "P", "TR", "V"],
             manifest.RootElement.GetProperty("entries")
                 .EnumerateArray()
                 .Select(entry => entry.GetProperty("objectType").GetString())
@@ -368,7 +369,7 @@ public sealed class ExportServiceTests
         Assert.Contains("FROM sys.sql_modules AS sm", sql);
         Assert.Contains("INNER JOIN sys.objects AS o", sql);
         Assert.Contains("RTRIM(o.type) AS object_type", sql);
-        Assert.Contains("o.type IN ('P', 'FN', 'IF', 'TR')", sql);
+        Assert.Contains("o.type IN ('P', 'FN', 'IF', 'TR', 'V')", sql);
         Assert.DoesNotContain("sys.procedures", sql);
         Assert.DoesNotContain("sys.triggers", sql);
     }
@@ -378,6 +379,7 @@ public sealed class ExportServiceTests
     [InlineData("FN", DatabaseModuleKind.SqlScalarFunction)]
     [InlineData("IF", DatabaseModuleKind.SqlInlineTableValuedFunction)]
     [InlineData("TR", DatabaseModuleKind.SqlTrigger)]
+    [InlineData("V ", DatabaseModuleKind.SqlView)]
     public void ModuleTypeMapping_AcceptsSqlObjectsTypeValues(
         string objectType,
         DatabaseModuleKind expected)

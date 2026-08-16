@@ -502,6 +502,7 @@ public sealed class ExportService
             DatabaseModuleKind.SqlScalarFunction => "scalar-function",
             DatabaseModuleKind.SqlInlineTableValuedFunction => "inline-table-function",
             DatabaseModuleKind.SqlTrigger => "trigger",
+            DatabaseModuleKind.SqlView => "view",
             _ => "module",
         };
         var schema = SanitizeFileNamePart(module.SchemaName ?? "database");
@@ -539,6 +540,7 @@ public sealed class ExportService
         DatabaseModuleKind.SqlScalarFunction => "sqlScalarFunction",
         DatabaseModuleKind.SqlInlineTableValuedFunction => "sqlInlineTableValuedFunction",
         DatabaseModuleKind.SqlTrigger => "sqlTrigger",
+        DatabaseModuleKind.SqlView => "sqlView",
         _ => "module",
     };
 
@@ -548,6 +550,7 @@ public sealed class ExportService
         DatabaseModuleKind.SqlScalarFunction => "FN",
         DatabaseModuleKind.SqlInlineTableValuedFunction => "IF",
         DatabaseModuleKind.SqlTrigger => "TR",
+        DatabaseModuleKind.SqlView => "V",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unsupported SQL module kind."),
     };
 

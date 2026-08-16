@@ -21,7 +21,7 @@ public sealed class SqlServerExportCollector : IDatabaseExportCollector
         INNER JOIN sys.objects AS o ON o.object_id = sm.object_id
         INNER JOIN sys.schemas AS s ON s.schema_id = o.schema_id
         WHERE o.is_ms_shipped = 0
-          AND o.type IN ('P', 'FN', 'IF', 'TR')
+          AND o.type IN ('P', 'FN', 'IF', 'TR', 'V')
         ORDER BY o.object_id;
         """;
 
@@ -189,6 +189,7 @@ public sealed class SqlServerExportCollector : IDatabaseExportCollector
         "FN" => DatabaseModuleKind.SqlScalarFunction,
         "IF" => DatabaseModuleKind.SqlInlineTableValuedFunction,
         "TR" => DatabaseModuleKind.SqlTrigger,
+        "V" => DatabaseModuleKind.SqlView,
         _ => throw new InvalidOperationException($"Unsupported SQL module object type: {objectType}"),
     };
 

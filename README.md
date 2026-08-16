@@ -68,7 +68,7 @@ dotnet tool uninstall --global MSSQLCompatibilityLevelQueryChecker.Tool
 | `-s` | `--sql-directory` | 解析する SQL ディレクトリ（複数指定可） |
 | `-o` | `--output` | 出力ディレクトリ |
 | `-d` | `--database` | エクスポート対象データベース |
-| `-M` | `--include-modules` | `P` / `FN` / `IF` / `TR` のSQLモジュールをエクスポート |
+| `-M` | `--include-modules` | `P` / `FN` / `IF` / `TR` / `V` のSQLモジュールをエクスポート |
 | `-Q` | `--include-query-cache` | クエリキャッシュをエクスポート |
 | `-e` | `--connection-string-env` | 接続文字列を格納した環境変数名 |
 | `-E` | `--encoding` | BOM なし SQL の文字コード |
@@ -181,7 +181,7 @@ mssql-compat-check \
 
 - `--database` と `--output` は必須です。
 - `--include-modules` または `--include-query-cache` の少なくとも一方が必要です。
-- `--include-modules` は `sys.sql_modules` と `sys.objects` から、ユーザー作成オブジェクトのうち `type` が `P`、`FN`、`IF`、`TR` のものを対象にします。
+- `--include-modules` は `sys.sql_modules` と `sys.objects` から、ユーザー作成オブジェクトのうち `type` が `P`、`FN`、`IF`、`TR`、`V` のものを対象にします。
 - `--include-query-cache` は対象データベースに帰属できる、取得可能なすべての完了済みキャッシュステートメントを対象にします。
 - `export` はファイルの保存だけを行い、互換性解析や HTML レポート生成は行いません。
 - `--current-level`、`--target-level`、`--level-scope`、`--sql-directory`、`--encoding`、`--quoted-identifiers`、`--include-full-sql`、`--ignore-unexpected-eof` は `export` では指定できません。
@@ -204,9 +204,12 @@ exported-queries/
 │   ├── IF/
 │   │   ├── manifest.json
 │   │   └── inline-table-function-dbo-GetOrders-125.sql
-│   └── TR/
+│   ├── TR/
+│   │   ├── manifest.json
+│   │   └── trigger-dbo-OrderTrigger-126.sql
+│   └── V/
 │       ├── manifest.json
-│       └── trigger-dbo-OrderTrigger-126.sql
+│       └── view-dbo-OrderView-127.sql
 └── cache/
     ├── manifest.json
     ├── <sha256>.sql
@@ -224,9 +227,10 @@ exported-queries/
 | `FN` | SQLスカラー関数 | `modules/FN` |
 | `IF` | SQLインラインテーブル値関数 | `modules/IF` |
 | `TR` | SQLトリガー | `modules/TR` |
+| `V` | ビュー | `modules/V` |
 
 `modules/manifest.json`には全typeの項目をまとめて記録し、各typeディレクトリの`manifest.json`にはそのtypeの項目だけを記録します。
-`TF`（複数ステートメントのテーブル値関数）、CLRモジュール、ビュー、データベーススコープDDLトリガーなど、上表以外のtypeは対象外です。
+`TF`（複数ステートメントのテーブル値関数）、CLRモジュール、データベーススコープDDLトリガーなど、上表以外のtypeは対象外です。
 
 ### 接続文字列
 
