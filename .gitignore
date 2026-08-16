@@ -1,0 +1,30 @@
+bin/
+obj/
+.vs/
+.idea/
+TestResults/
+artifacts/
+reports/
+exported-queries/
+.mssql-compat-output
+analysis-report.json
+analysis-report.html
+export-manifest.json
+*.user
+*.suo
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+secrets.json
+appsettings.*.local.json
+
+# Certificates, private keys, and signing keys
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+id_rsa
+id_ed25519
